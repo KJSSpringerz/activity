@@ -202,7 +202,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .fail:hover { border-color: var(--bad); color: var(--bad); }
 .sub { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
-.standings h3 { margin: 0 0 10px; font-family: var(--font-display); font-weight: 600; font-size: 18px; display: flex; justify-content: space-between; align-items: baseline; }
+.st-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.st-head .btn { min-height: 34px; font-size: 13px; }
+.standings h3 { margin: 0; gap: 8px; font-family: var(--font-display); font-weight: 600; font-size: 18px; display: flex; justify-content: space-between; align-items: baseline; }
 .standings h3 span { font-family: var(--font-body); font-size: 12px; color: var(--muted); font-weight: 500; }
 .team-list { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
 .team-row { display: grid; grid-template-columns: 26px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 12px; background: var(--surface); border: 2px solid transparent; }
@@ -468,7 +470,7 @@ body.role-pad .draw-foot { justify-content: center; }
       </section>
 
       <section class="card standings">
-        <h3>Spielstand <span>48 Felder bis zum Ziel</span></h3>
+        <div class="st-head"><h3>Spielstand <span>48 Felder bis zum Ziel</span></h3><button class="btn mini-btn danger" id="resetBoard" type="button" title="Alle Figuren auf Start, Teams bleiben gespeichert">Spielfeld zurücksetzen</button></div>
         <ol class="team-list" id="teamList"></ol>
       </section>
     </aside>
@@ -607,7 +609,7 @@ body.role-pad .draw-foot { justify-content: center; }
       <dt>F</dt><dd>Vollbild an/aus</dd>
       <dt>D</dt><dd>Zeichenfläche öffnen</dd>
     </dl>
-    <p class="note">Ein Klick auf ein Feld des Spielbretts setzt eine Figur von Hand dorthin. Ein Klick auf einen Teamnamen im Spielstand macht diese Mannschaft zur aktuellen.</p>
+    <p class="note">Ein Klick auf ein Feld des Spielbretts setzt eine Figur von Hand dorthin. Ein Klick auf einen Teamnamen im Spielstand macht diese Mannschaft zur aktuellen. „Spielfeld zurücksetzen“ stellt alle Figuren auf Start; Teams, Mitglieder und Einstellungen bleiben erhalten. Mit „Rückgängig“ lässt sich das zurücknehmen.</p>
   </div>
 </div>
 
@@ -1018,6 +1020,28 @@ body.role-pad .draw-foot { justify-content: center; }
     animate();
   }
   function nudge(i, d) { placeTeam(i, S.teams[i].pos + d); }
+  let resetArmT = 0;
+  function armReset() {
+    const b = $('resetBoard');
+    if (!b.classList.contains('armed')) {
+      b.classList.add('armed'); b.textContent = 'Wirklich alle auf Start?';
+      clearTimeout(resetArmT);
+      resetArmT = setTimeout(() => { b.classList.remove('armed'); b.textContent = 'Spielfeld zurücksetzen'; }, 4000);
+      return;
+    }
+    clearTimeout(resetArmT);
+    b.classList.remove('armed'); b.textContent = 'Spielfeld zurücksetzen';
+    resetBoard();
+  }
+  function resetBoard() {
+    if (animTimer) return;
+    snapshot();
+    S.teams.forEach((t) => { t.pos = 0; t.joker = true; t.player = 0; t.turns = 0; });
+    S.cur = 0; S.cards = 0; S.round = 1; S.finished = []; S.log = []; S.drawView = null;
+    $('winner').hidden = true;
+    timer.reset();
+    save(); buildBoard(); render();
+  }
   function setCurrent(i) {
     if (i === S.cur || S.finished.includes(i)) return;
     snapshot(); S.cur = i; save(); render();
@@ -2156,6 +2180,7 @@ body.role-pad .draw-foot { justify-content: center; }
     $('closeRules').addEventListener('click', () => { $('rules').hidden = true; });
     $('rules').addEventListener('click', (e) => { if (e.target.id === 'rules') $('rules').hidden = true; });
     $('undoBtn').addEventListener('click', undo);
+    $('resetBoard').addEventListener('click', armReset);
     $('soundBtn').addEventListener('click', () => { S.settings.sound = !S.settings.sound; sound.unlock(); save(); paintSound(); });
     $('themeBtn').addEventListener('click', () => {
       const order = ['auto', 'dark', 'light'];
